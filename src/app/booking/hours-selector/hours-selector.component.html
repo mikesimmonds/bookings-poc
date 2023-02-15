@@ -1,0 +1,13 @@
+<div class="container">
+  <div #hoursList>
+    <div
+    *ngFor="let row of rows; index as i"
+    [attr.data-ordinal]="i"
+     class="hour-row">{{row.hour}}</div>
+  </div>
+</div>
+
+<!-- <ng-template #dragHandle>
+  <div class="drag-handle">
+  </div>
+</ng-template> -->

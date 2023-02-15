@@ -1,0 +1,29 @@
+:host {
+  display:block;
+}
+.container {
+  overflow-y: scroll;
+}
+.hour-row {
+  height: 20px;
+  border: 1px solid #ccc;
+  position: relative;
+  &.selected {
+    background-color: #73e247;
+  }
+ }
+
+ .drag-handle {
+  position: absolute;
+  height: 24px;
+  width: 24px;
+  background-color: blue;
+  border-radius: 50%;
+  margin: 0 auto;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 50%;
+  &.top {
+    top: -50%;
+  }
+ }
