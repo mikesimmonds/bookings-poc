@@ -39,10 +39,12 @@ export class HoursSelectorComponent implements AfterViewInit, OnInit {
 
   addListenerToHourRow(row: HTMLElement) {
     this.renderer.listen(row, 'touchstart', (event) => {
+      event.preventDefault();
       this.removeAllRowsFromSelection();
       this.removeAllDragHandles();
       let currentlyTouchedRow: Element | null;
       const removeTouchmoveListener = this.renderer.listen(row, 'touchmove', (event) => {
+        event.preventDefault();
         const el = document.elementFromPoint(event.touches[0].clientX, event.touches[0].clientY);
         if (currentlyTouchedRow === el) {return} else currentlyTouchedRow = el;
         if (!this.rowIsInSelection(el as HTMLElement)) {
@@ -51,6 +53,7 @@ export class HoursSelectorComponent implements AfterViewInit, OnInit {
         }
       })
       this.renderer.listen(event.target, 'touchend', (event) => {
+        event.preventDefault();
         this.sortSelectedRows();
         // this.removeAllDragHandles();
         // this.addDragHandleToFirstAndLastSelectedRow(Array.from(this.selectedRows));
