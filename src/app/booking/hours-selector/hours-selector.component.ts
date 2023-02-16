@@ -33,7 +33,8 @@ export class HoursSelectorComponent implements AfterViewInit, OnInit {
   @ViewChild('dragHandle', { read: ElementRef })
   dragHandle!: ElementRef<HTMLElement>;
 
-  selectedRows: Set<HTMLElement> = new Set();
+  selectedRows: Map<number, HTMLElement> = new Map();
+
 
   constructor(private renderer: Renderer2) {}
 
@@ -48,11 +49,11 @@ export class HoursSelectorComponent implements AfterViewInit, OnInit {
   addListenerToHourRow(row: HTMLElement) {
     this.renderer.listen(row, 'touchstart', (event) => {
       event.preventDefault();
-      if (!this.isFirstOrLastRow(event.target)) {
+      if (!this.isFirstOrLastRowInSelection(event.target)) {
         this.removeAllRowsFromSelection();
       }
-      let currentlyTouchedRow: Element | null;
-      let previouslyTouchedRow: Element | null;
+      let lastTouchedOrdinal: number;
+      let previouslyTouchedOrdinal: number;
       let previousClientYs: number[] = [];
       const removeTouchmoveListener = this.renderer.listen(
         event.target,
@@ -61,29 +62,26 @@ export class HoursSelectorComponent implements AfterViewInit, OnInit {
           // prevent default to stop screen scrolling and chrome drag-to-refresh
           event.preventDefault();
           // Get the element that is currently being touchmoved over
-          const el = document.elementFromPoint(
-            event.touches[0].clientX,
-            event.touches[0].clientY
-          );
+          const currentTouchedOrdinal = this.ordinalFromEl(this.getElementFromEvent(event));
           // debounce if the element is the same as the last one
-          if (currentlyTouchedRow === el) {
+          if (lastTouchedOrdinal === currentTouchedOrdinal) {
             return;
           } else {
-            previouslyTouchedRow = currentlyTouchedRow
-            currentlyTouchedRow = el;
+            previouslyTouchedOrdinal = lastTouchedOrdinal
+            lastTouchedOrdinal = currentTouchedOrdinal;
           }
 
           // if direction changes, toggle row in selection
           if (this.isSameDirection(event.touches[0].clientY, previousClientYs)) {
             previousClientYs = [previousClientYs[1], event.touches[0].clientY];
           } else {
-            if (previouslyTouchedRow) {
-              this.toggleRowSelection(previouslyTouchedRow as HTMLElement);
+            if (previouslyTouchedOrdinal) {
+              this.toggleRowSelection(this.selectedRows.get(previouslyTouchedOrdinal));
             }
             previousClientYs = [previousClientYs[1], event.touches[0].clientY];
           }
 
-          this.toggleRowSelection(el);
+          this.toggleRowSelection(this.selectedRows.get(currentTouchedOrdinal));
         }
       );
       this.renderer.listen(event.target, 'touchend', (event) => {
@@ -96,12 +94,23 @@ export class HoursSelectorComponent implements AfterViewInit, OnInit {
     });
   }
 
-  private toggleRowSelection(el: Element | null) {
+  private toggleRowSelection(el: HTMLElement | undefined) {
     if (this.rowIsInSelection(el as HTMLElement)) {
       this.removeRowFromSelection(el as HTMLElement);
     } else {
       this.addRowToSelection(el as HTMLElement);
     }
+  }
+
+  getElementFromEvent(event: TouchEvent): HTMLElement {
+    return document.elementFromPoint(
+      event.touches[0].clientX,
+      event.touches[0].clientY
+    ) as HTMLElement;
+  }
+
+  ordinalFromEl(el: HTMLElement): number {
+    return Number(el.dataset['ordinal'])
   }
 
 // [120, 130] 145
@@ -118,103 +127,37 @@ export class HoursSelectorComponent implements AfterViewInit, OnInit {
     return sameDirection;
   }
 
-  isFirstOrLastRow(row: HTMLElement) {
-    const rowsArray = Array.from(this.selectedRows);
-    return row === rowsArray[0] || row === rowsArray[rowsArray.length - 1];
+  isFirstOrLastRowInSelection(row: HTMLElement) {
+    const rowsArray = Array.from(this.selectedRows.keys());
+    const rowOrdinal = this.ordinalFromEl(row);
+    return rowOrdinal === rowsArray[0] || rowOrdinal === rowsArray[rowsArray.length - 1];
   }
-
-
-  addListenerToDragHandle(handle: HTMLElement) {
-    this.renderer.listen(handle, 'touchstart', (event) => {
-      console.log('ts');
-      event.stopPropagation();
-      let currentlyTouchedRow: Element | null;
-      const removeTouchmoveListener = this.renderer.listen(
-        event.target,
-        'touchmove',
-        (event) => {
-          const el = document.elementFromPoint(
-            event.touches[0].clientX,
-            event.touches[0].clientY
-          );
-          if (currentlyTouchedRow === el) {
-            return;
-          } else currentlyTouchedRow = el;
-          if (this.rowIsInSelection(el as HTMLElement)) {
-            console.log('removign row to selection from handle');
-            this.removeRowFromSelection(el as HTMLElement);
-            return;
-          } else {
-            if (!this.rowIsInSelection(el as HTMLElement)) {
-              console.log('adding row to selection from handle');
-              this.addRowToSelection(el as HTMLElement);
-            }
-          }
-        }
-      );
-      this.renderer.listen(event.target, 'touchend', (event) => {
-        this.sortSelectedRows();
-        this.removeAllDragHandles();
-        this.addDragHandleToFirstAndLastSelectedRow(
-          Array.from(this.selectedRows)
-        );
-        removeTouchmoveListener();
-      });
-    });
-  }
-
-  addDragHandleToFirstAndLastSelectedRow(selectedRowsArray: HTMLElement[]) {
-    selectedRowsArray.forEach((row) => {
-      if (row === selectedRowsArray[0]) {
-        this.addDragHandleToRow(row, true);
-      }
-      if (row === selectedRowsArray[selectedRowsArray.length - 1]) {
-        this.addDragHandleToRow(row, false);
-      }
-    });
-  }
-
-  addDragHandleToRow(row: HTMLElement, isTop: boolean = false) {
-    const dragHandle = this.renderer.createElement('div');
-    this.renderer.addClass(dragHandle, 'drag-handle');
-    this.renderer.addClass(dragHandle, isTop ? 'top' : 'bottom');
-    this.renderer.appendChild(row, dragHandle);
-    this.addListenerToDragHandle(dragHandle);
-  }
-
-  removeAllDragHandles() {
-    document.querySelectorAll('.drag-handle').forEach((handle) => {
-      handle.remove();
-    });
-  }
-
-  // addDragHandleToRow(row: HTMLElement) {
-  //   this.renderer.appendChild(row, this.dragHandle);
-  //   this.addListenerToDragHandle(this.dragHandle.nativeElement);
-  // }
 
   sortSelectedRows() {
     const selectedRowsArray = Array.from(this.selectedRows);
     selectedRowsArray.sort((a, b) => {
-      const aOrdinal = a.dataset['ordinal'] || 0;
-      const bOrdinal = b.dataset['ordinal'] || 0;
+      const aOrdinal = a[0] || 0;
+      const bOrdinal = b[0] || 0;
       return +aOrdinal - +bOrdinal;
     });
-    this.selectedRows = new Set(selectedRowsArray);
+    this.selectedRows = new Map(selectedRowsArray);
   }
 
   addRowToSelection(row: HTMLElement) {
+    const ordinal = this.ordinalFromEl(row);
     this.renderer.addClass(row, 'selected');
-    this.selectedRows.add(row);
+    this.selectedRows.set(ordinal, row);
   }
 
   rowIsInSelection(row: HTMLElement) {
-    return this.selectedRows.has(row);
+    const ordinal = this.ordinalFromEl(row);
+    return this.selectedRows.has(ordinal);
   }
 
   removeRowFromSelection(row: HTMLElement) {
+    const ordinal = this.ordinalFromEl(row);
     this.renderer.removeClass(row, 'selected');
-    this.selectedRows.delete(row);
+    this.selectedRows.delete(ordinal);
   }
 
   removeAllRowsFromSelection() {
