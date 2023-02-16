@@ -1,5 +1,5 @@
 
 <div class="container">
   <app-day-selector></app-day-selector>
-  <app-hours-selector></app-hours-selector>
+  <app-hours-selector [rows]="rows" (rowsOutput)="handleSelectedRows($event)"></app-hours-selector>
 </div>

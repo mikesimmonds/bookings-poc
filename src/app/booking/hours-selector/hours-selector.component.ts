@@ -2,7 +2,10 @@ import {
   AfterViewInit,
   Component,
   ElementRef,
+  EventEmitter,
+  Input,
   OnInit,
+  Output,
   Query,
   QueryList,
   Renderer2,
@@ -10,21 +13,21 @@ import {
   ViewChildren,
 } from '@angular/core';
 
+export interface Row {
+  hour: string;
+  available: boolean;
+}
+
 @Component({
   selector: 'app-hours-selector',
   templateUrl: './hours-selector.component.html',
   styleUrls: ['./hours-selector.component.scss'],
 })
 export class HoursSelectorComponent implements AfterViewInit, OnInit {
-  rows = [
-    { hour: '10:00', available: true },
-    { hour: '11:00', available: true },
-    { hour: '12:00', available: true },
-    { hour: '13:00', available: true },
-    { hour: '14:00', available: true },
-    { hour: '15:00', available: true },
-    { hour: '16:00', available: true },
-  ];
+
+  @Input() rows!: Row[];
+  @Output() rowsOutput = new EventEmitter<Row[]>();
+
 
   @ViewChildren('hoursList', { read: ElementRef }) hourRows!: QueryList<
     ElementRef<HTMLElement>
@@ -52,9 +55,9 @@ export class HoursSelectorComponent implements AfterViewInit, OnInit {
       if (!this.isFirstOrLastRowInSelection(event.target)) {
         this.removeAllRowsFromSelection();
       }
-      let lastTouchedOrdinal: number;
+      let lastTouchedOrdinal: number = -1;
       let previouslyTouchedOrdinal: number;
-      let previousClientYs: number[] = [];
+      let previousTouchedOrdinals: number[] = [];
       const removeTouchmoveListener = this.renderer.listen(
         event.target,
         'touchmove',
@@ -62,7 +65,9 @@ export class HoursSelectorComponent implements AfterViewInit, OnInit {
           // prevent default to stop screen scrolling and chrome drag-to-refresh
           event.preventDefault();
           // Get the element that is currently being touchmoved over
-          const currentTouchedOrdinal = this.ordinalFromEl(this.getElementFromEvent(event));
+          const el = this.getElementFromEvent(event)
+          const currentTouchedOrdinal = this.ordinalFromEl(el);
+          console.log(lastTouchedOrdinal)
           // debounce if the element is the same as the last one
           if (lastTouchedOrdinal === currentTouchedOrdinal) {
             return;
@@ -71,17 +76,22 @@ export class HoursSelectorComponent implements AfterViewInit, OnInit {
             lastTouchedOrdinal = currentTouchedOrdinal;
           }
 
-          // if direction changes, toggle row in selection
-          if (this.isSameDirection(event.touches[0].clientY, previousClientYs)) {
-            previousClientYs = [previousClientYs[1], event.touches[0].clientY];
-          } else {
-            if (previouslyTouchedOrdinal) {
-              this.toggleRowSelection(this.selectedRows.get(previouslyTouchedOrdinal));
-            }
-            previousClientYs = [previousClientYs[1], event.touches[0].clientY];
-          }
+          this.toggleRowSelection(el);
 
-          this.toggleRowSelection(this.selectedRows.get(currentTouchedOrdinal));
+          /* Below are nice-to have functions but leaving for now... */
+
+          // if direction changes, toggle row in selection
+          // if (this.isSameDirection(currentTouchedOrdinal, previousTouchedOrdinals)) {
+          //   previousTouchedOrdinals = [previousTouchedOrdinals[1], currentTouchedOrdinal];
+          // } else {
+          //   if (previouslyTouchedOrdinal) {
+          //     this.toggleRowSelection(this.selectedRows.get(previouslyTouchedOrdinal));
+          //   }
+          //   previousTouchedOrdinals = [previousTouchedOrdinals[1], currentTouchedOrdinal];
+          // }
+
+
+          // this.addRowToSelection(el)
         }
       );
       this.renderer.listen(event.target, 'touchend', (event) => {
@@ -95,10 +105,10 @@ export class HoursSelectorComponent implements AfterViewInit, OnInit {
   }
 
   private toggleRowSelection(el: HTMLElement | undefined) {
-    if (this.rowIsInSelection(el as HTMLElement)) {
-      this.removeRowFromSelection(el as HTMLElement);
-    } else {
+    if (!this.rowIsInSelection(el as HTMLElement)) {
       this.addRowToSelection(el as HTMLElement);
+    } else {
+      this.removeRowFromSelection(el as HTMLElement);
     }
   }
 
@@ -114,12 +124,12 @@ export class HoursSelectorComponent implements AfterViewInit, OnInit {
   }
 
 // [120, 130] 145
-  isSameDirection(currentClientY: number, previousClientYs: number[]) {
-    console.log(`previousClientYs: `, previousClientYs)
-    console.log(`currentClientY: `, currentClientY)
-    if (previousClientYs.length < 2) return true
-    const wasGoingDown = previousClientYs[0] < previousClientYs[1];
-    const isGoingDown = previousClientYs[1] < currentClientY;
+  isSameDirection(currentTouchedOrdinal: number, previousTouchedOrdinals: number[]) {
+    console.log(`previousClientYs: `, previousTouchedOrdinals)
+    console.log(`currentClientY: `, currentTouchedOrdinal)
+    if (previousTouchedOrdinals.length < 2) return true
+    const wasGoingDown = previousTouchedOrdinals[0] < previousTouchedOrdinals[1];
+    const isGoingDown = previousTouchedOrdinals[1] < currentTouchedOrdinal;
     const sameDirection = wasGoingDown == isGoingDown;
     console.table([
       {wasGoingDown, isGoingDown, sameDirection}
