@@ -3,6 +3,8 @@
     <div
     *ngFor="let row of rows; index as i"
     [attr.data-ordinal]="i"
+    [attr.data-hour]="row.hour"
+    [attr.data-available]="row.available"
      class="hour-row">{{row.hour}}</div>
   </div>
 </div>

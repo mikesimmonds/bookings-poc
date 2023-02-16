@@ -1,4 +1,5 @@
 import { Component, OnInit } from '@angular/core';
+import { ModalService } from '../modal/modal.service';
 import { Row } from './hours-selector/hours-selector.component';
 
 @Component({
@@ -18,14 +19,19 @@ rows: Row[] = [
     { hour: '16:00', available: true },
   ];
 
-  constructor() { }
+  constructor(
+    private modalService: ModalService,
+  ) { }
 
   ngOnInit(): void {
   }
 
 
-  handleSelectedRows($event: Row[]) {
-    throw new Error('Method not implemented.');
+  handleSelectedRows(rows: Row[]) {
+    this.modalService.alert({
+      title: 'Selected rows',
+      message: ` you have selected the following rows: \n ${rows.map((row) => row.hour).join(', ')}`,
+    });
   }
 
 }

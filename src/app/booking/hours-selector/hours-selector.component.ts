@@ -17,7 +17,17 @@ export interface Row {
   hour: string;
   available: boolean;
 }
-
+/**
+ * This UI component got pulled from the requirements, but its likely to be good for a bunch of use cases if it can become generic.
+ * It's a list of rows that can be selected by dragging a finger over them.
+ * I intended to make this into a directive that can be applied to a list of rows. It would then add its own ordinal to each row and use that to track the selection.
+ *
+ *
+ * @export
+ * @class HoursSelectorComponent
+ * @implements {AfterViewInit}
+ * @implements {OnInit}
+ */
 @Component({
   selector: 'app-hours-selector',
   templateUrl: './hours-selector.component.html',
@@ -67,7 +77,6 @@ export class HoursSelectorComponent implements AfterViewInit, OnInit {
           // Get the element that is currently being touchmoved over
           const el = this.getElementFromEvent(event)
           const currentTouchedOrdinal = this.ordinalFromEl(el);
-          console.log(lastTouchedOrdinal)
           // debounce if the element is the same as the last one
           if (lastTouchedOrdinal === currentTouchedOrdinal) {
             return;
@@ -100,8 +109,27 @@ export class HoursSelectorComponent implements AfterViewInit, OnInit {
         // this.removeAllDragHandles();
         // this.addDragHandleToFirstAndLastSelectedRow(Array.from(this.selectedRows));
         removeTouchmoveListener();
+        this.rowsOutput.emit(this.getDataFromAllSelectedRows())
       });
     });
+  }
+
+  getDataFromAllSelectedRows(): Row[] {
+    return Array.from(this.selectedRows.values()).map((row) => this.getDataFromRow(row));
+  }
+
+  getDataFromRow(row: HTMLElement): Row {
+    const hour = row.dataset['hour']
+    const available = !!row.dataset['available']
+    console.log(`available: `, available, hour)
+    if (hour && available) {
+      return {
+        hour,
+        available
+      }
+    } else {
+        throw new Error('Row does not have hour or available data')
+      }
   }
 
   private toggleRowSelection(el: HTMLElement | undefined) {
